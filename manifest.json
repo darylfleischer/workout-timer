@@ -1,0 +1,21 @@
+{
+  "name": "Workout Timer",
+  "short_name": "Timer",
+  "start_url": "Workout_Timer_Mobile_App_Like.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0077cc",
+  "description": "A simple interval workout timer",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

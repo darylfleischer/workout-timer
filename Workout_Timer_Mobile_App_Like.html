@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0077cc" />
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workout Timer</title>
+  <style>
+    :root {
+      --green: #38b000;
+      --gray: #f4f4f4;
+      --text: #222;
+      --background: #ffffff;
+      --accent: #0077cc;
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: var(--background);
+      color: var(--text);
+      margin: 0;
+      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      transition: background-color 0.5s;
+    }
+
+    .controls {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+      padding: 1.5rem;
+      max-width: 400px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1rem;
+    }
+
+    input[type="number"] {
+      font-size: 1rem;
+      width: 70px;
+      padding: 0.4rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      text-align: center;
+    }
+
+    #effectiveTime {
+      font-size: 0.95rem;
+      text-align: center;
+      color: #666;
+    }
+
+    #timer, #totalTime {
+      font-size: 4rem;
+      font-weight: bold;
+      margin: 1rem 0 0.5rem;
+    }
+
+    .buttons {
+      margin-top: 1rem;
+    }
+
+    button {
+      font-size: 1.1rem;
+      padding: 0.6rem 1.4rem;
+      margin: 0 0.5rem;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #fff;
+    }
+
+    #startBtn { background-color: var(--accent); }
+    #resetBtn { background-color: #999; }
+  </style>
+</head>
+<body>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(console.error);
+    }
+  </script>
+  <div class="controls">
+    <label>Workout Duration (seconds): <input type="number" id="workoutDuration" value="30" min="1"></label>
+    <label>Rest Duration (seconds): <input type="number" id="restDuration" value="30" min="1"></label>
+    <label>Number of Intervals: <input type="number" id="intervalCount" value="8" min="1"></label>
+    <div id="effectiveTime">Workout Time: 04:00</div>
+  </div>
+
+  <div id="timer">00:30</div>
+  <div class="buttons">
+    <button id="startBtn">Start</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+  <div id="totalTime">Workout Time: 00:00</div>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      const timerEl = document.getElementById("timer");
+      const totalTimeEl = document.getElementById("totalTime");
+      const effectiveTimeEl = document.getElementById("effectiveTime");
+      const startBtn = document.getElementById("startBtn");
+      const resetBtn = document.getElementById("resetBtn");
+      const intervalCountEl = document.getElementById("intervalCount");
+      const workoutDurationEl = document.getElementById("workoutDuration");
+      const restDurationEl = document.getElementById("restDuration");
+
+      let intervalId, prepId;
+      let currentInterval = 0, isWorkout = true, isRunning = false, hasStarted = false, prepDone = false;
+      let remainingTime = 0, totalIntervals = 0, workoutDuration = 30, restDuration = 30;
+      let workoutSecondsElapsed = 0;
+      const prepTime = 5;
+
+      function updateDisplay() {
+        const min = Math.floor(remainingTime / 60).toString().padStart(2, '0');
+        const sec = (remainingTime % 60).toString().padStart(2, '0');
+        timerEl.textContent = `${min}:${sec}`;
+      }
+
+      function updateTotalTimeDisplay() {
+        const min = Math.floor(workoutSecondsElapsed / 60).toString().padStart(2, '0');
+        const sec = (workoutSecondsElapsed % 60).toString().padStart(2, '0');
+        totalTimeEl.textContent = `Workout Time: ${min}:${sec}`;
+      }
+
+      function updateEffectiveWorkoutTime() {
+        const count = parseInt(intervalCountEl.value, 10) || 0;
+        const dur = parseInt(workoutDurationEl.value, 10) || 0;
+        const total = count * dur;
+        const min = Math.floor(total / 60).toString().padStart(2, '0');
+        const sec = (total % 60).toString().padStart(2, '0');
+        effectiveTimeEl.textContent = `Workout Time: ${min}:${sec}`;
+      }
+
+      function startMainInterval() {
+        clearInterval(intervalId);
+        intervalId = setInterval(() => {
+          if (remainingTime > 0) {
+            remainingTime--;
+            updateDisplay();
+            if (isWorkout) workoutSecondsElapsed++;
+            updateTotalTimeDisplay();
+          } else {
+            if (isWorkout) {
+              isWorkout = false;
+              remainingTime = restDuration;
+              document.body.style.backgroundColor = "var(--background)";
+            } else {
+              currentInterval++;
+              if (currentInterval >= totalIntervals) {
+                clearInterval(intervalId);
+                timerEl.textContent = "Done!";
+                document.body.style.backgroundColor = "var(--background)";
+                isRunning = false;
+                startBtn.textContent = "Start";
+                return;
+              }
+              isWorkout = true;
+              remainingTime = workoutDuration;
+              document.body.style.backgroundColor = "var(--green)";
+            }
+            updateDisplay();
+          }
+        }, 1000);
+        isRunning = true;
+        startBtn.textContent = "Pause";
+      }
+
+      function toggleTimer() {
+        if (isRunning) {
+          clearInterval(intervalId);
+          clearInterval(prepId);
+          isRunning = false;
+          startBtn.textContent = "Start";
+          return;
+        }
+
+        if (!hasStarted) {
+          workoutDuration = parseInt(workoutDurationEl.value, 10);
+          restDuration = parseInt(restDurationEl.value, 10);
+          totalIntervals = parseInt(intervalCountEl.value, 10);
+          currentInterval = 0;
+          isWorkout = true;
+          hasStarted = true;
+          workoutSecondsElapsed = 0;
+          updateTotalTimeDisplay();
+        }
+
+        if (!prepDone) {
+          prepDone = true;
+          remainingTime = prepTime;
+          document.body.style.backgroundColor = "var(--background)";
+          updateDisplay();
+          prepId = setInterval(() => {
+            if (remainingTime > 1) {
+              remainingTime--;
+              updateDisplay();
+            } else {
+              clearInterval(prepId);
+              remainingTime = workoutDuration;
+              document.body.style.backgroundColor = "var(--green)";
+              updateDisplay();
+              startMainInterval();
+            }
+          }, 1000);
+        } else {
+          startMainInterval();
+        }
+      }
+
+      function resetTimer() {
+        clearInterval(intervalId);
+        clearInterval(prepId);
+        intervalId = prepId = null;
+        isRunning = hasStarted = prepDone = false;
+        currentInterval = workoutSecondsElapsed = 0;
+        timerEl.textContent = "00:30";
+        totalTimeEl.textContent = "Workout Time: 00:00";
+        startBtn.textContent = "Start";
+        document.body.style.backgroundColor = "var(--background)";
+        updateEffectiveWorkoutTime();
+      }
+
+      startBtn.addEventListener("click", toggleTimer);
+      resetBtn.addEventListener("click", resetTimer);
+      intervalCountEl.addEventListener("input", updateEffectiveWorkoutTime);
+      workoutDurationEl.addEventListener("input", updateEffectiveWorkoutTime);
+
+      updateEffectiveWorkoutTime();
+    });
+  </script>
+</body>
+</html>
